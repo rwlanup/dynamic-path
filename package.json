@@ -1,0 +1,45 @@
+{
+  "name": "dynamic-path",
+  "version": "0.0.1",
+  "description": "Dynamic pathname generator for Next.js (Square Bracket) route pattern",
+  "main": "./dist/index.cjs",
+  "private": false,
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rwlanup/dynamic-path"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "typecheck": "tsc",
+    "release": "pnpm run typecheck && pnpm run test && pnpm run build && changeset publish"
+  },
+  "keywords": [
+    "url",
+    "url generator",
+    "next.js",
+    "path generator",
+    "next.js path generator"
+  ],
+  "author": "Anup Rawal <rwlanup@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@changesets/cli": "^2.26.1",
+    "@types/node": "^18.15.11",
+    "tsup": "^6.7.0",
+    "typescript": "^5.0.4",
+    "vitest": "^0.29.8"
+  },
+  "type": "module",
+  "prettier": {
+    "endOfLine": "lf",
+    "tabWidth": 2,
+    "printWidth": 120,
+    "singleQuote": true,
+    "semi": true,
+    "trailingComma": "es5",
+    "useTabs": false
+  }
+}
