@@ -1,5 +1,11 @@
 # dynamic-path
 
+## 1.0.1
+
+### Patch Changes
+
+- febe7c6: Use named export instead of default export
+
 ## 1.0.0
 
 ### Major Changes
