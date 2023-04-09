@@ -1,6 +1,6 @@
 {
   "name": "dynamic-path",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Dynamic pathname generator for Next.js (Square Bracket) route pattern",
   "main": "./dist/index.cjs",
   "private": false,
