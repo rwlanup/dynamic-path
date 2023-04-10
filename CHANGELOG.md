@@ -1,5 +1,14 @@
 # dynamic-path
 
+## 1.0.2
+
+### Patch Changes
+
+- 730f9b9: Fixes pathname autocomplete and encode component
+
+  - Encode provided value for pathname
+  - Remove empty string pathname from autocomplete
+
 ## 1.0.1
 
 ### Patch Changes
