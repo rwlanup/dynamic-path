@@ -4,26 +4,40 @@ type SimplifyObj<Obj> = Obj extends object
     }
   : Obj;
 
+type Trim<T extends string> = T extends ''
+  ? never
+  : T extends ` ${infer R}`
+  ? Trim<R>
+  : T extends `${infer L} `
+  ? Trim<L>
+  : T;
+
 export type SegmentKey<Path extends string> = Path extends `${string}[${infer Key}]${infer RestPath}`
-  ? Key extends `...${string}` | `[...$${string}`
+  ? Trim<Key> extends `...${string}` | `[...$${string}`
     ? SegmentKey<RestPath>
     : Key extends `[${infer _Key}`
     ? SegmentKey<`[${_Key}]`> | SegmentKey<RestPath>
-    : Key | SegmentKey<RestPath>
+    : Trim<Key> | SegmentKey<RestPath>
   : never;
 
 export type OptionalSegmentKey<Path extends string> = Path extends `${string}[[${infer Key}]]${infer RestPath}`
-  ? Key extends `...${string}`
+  ? Trim<Key> extends `...${string}`
     ? OptionalSegmentKey<RestPath>
-    : Key | OptionalSegmentKey<RestPath>
+    : Trim<Key> | OptionalSegmentKey<RestPath>
   : never;
 
-export type CatchAllSegmentKey<Path extends string> = Path extends `${string}[...${infer Key}]${infer RestPath}`
-  ? Key | CatchAllSegmentKey<RestPath>
+export type CatchAllSegmentKey<Path extends string> = Path extends `${string}[${infer PossibleKey}]${infer RestPath}`
+  ? Trim<PossibleKey> extends `...${infer Key}`
+    ? Key | CatchAllSegmentKey<RestPath>
+    : CatchAllSegmentKey<RestPath>
   : never;
 
 export type OptionalCatchAllSegmentKey<Path extends string> =
-  Path extends `${string}[[...${infer Key}]]${infer RestPath}` ? Key | OptionalCatchAllSegmentKey<RestPath> : never;
+  Path extends `${string}[[${infer PossibleKey}]]${infer RestPath}`
+    ? Trim<PossibleKey> extends `...${infer Key}`
+      ? Key | OptionalCatchAllSegmentKey<RestPath>
+      : OptionalCatchAllSegmentKey<RestPath>
+    : never;
 
 export type SegmentReplacePath<Path extends string> = SimplifyObj<
   {
@@ -35,19 +49,9 @@ export type SegmentReplacePath<Path extends string> = SimplifyObj<
 
 export type CatchAllSegmentReplacePath<Path extends string> = SimplifyObj<
   {
-    [K in CatchAllSegmentKey<Path> as K extends OptionalCatchAllSegmentKey<Path> ? never : K]: (
-      | string
-      | number
-      | null
-      | undefined
-    )[];
+    [K in CatchAllSegmentKey<Path>]: (string | number | null | undefined)[];
   } & {
-    [K in CatchAllSegmentKey<Path> as K extends OptionalCatchAllSegmentKey<Path> ? K : never]?: (
-      | string
-      | number
-      | null
-      | undefined
-    )[];
+    [K in OptionalCatchAllSegmentKey<Path>]?: (string | number | null | undefined)[];
   }
 >;
 
@@ -55,7 +59,7 @@ export type ReplacePath<Path extends string> = SimplifyObj<SegmentReplacePath<Pa
 
 // Regex to find single and catch all segment
 const SINGLE_SEGMENT_REGEX = /\[[\w\d\s]+\]/gi;
-const CATCH_ALL_SEGMENT_REGEX = /\[\.{3}[\w\d\s]+\]/gi;
+const CATCH_ALL_SEGMENT_REGEX = /\[\s*\.{3}[\w\d\s]+\]/gi;
 
 const isOptionalSegment = (segment: string, path: string): boolean => {
   const indexOfSegment = path.indexOf(segment);
@@ -86,11 +90,13 @@ const replaceSingleSegment = (path: string, replace: Record<string, unknown>, or
   if (singleSegments) {
     singleSegments.forEach((segment) => {
       const key = segment.slice(1, segment.length - 1);
+      const trimKey = key.trim();
       const isOptional = isOptionalSegment(segment, generatedPath);
-      if (key in replace && !isEmptyValue(replace[key])) {
-        const value = replace[key];
+      if (trimKey in replace && !isEmptyValue(replace[trimKey])) {
+        const value = replace[trimKey];
         if (typeof value === 'number' || typeof value === 'string') {
-          generatedPath = generatedPath.replace(isOptional ? `[${segment}]` : segment, value.toString());
+          const encodedValue = encodeURIComponent(value.toString());
+          generatedPath = generatedPath.replace(isOptional ? `[${segment}]` : segment, encodedValue);
         } else {
           throw new TypeError(`Invalid value type of ${key} for path: ${originalPath}`);
         }
@@ -112,7 +118,8 @@ const replaceCatchAllSegment = (path: string, replace: Record<string, unknown>, 
   if (catchAllSegments) {
     catchAllSegments.forEach((segment) => {
       const isOptional = isOptionalSegment(segment, generatedPath);
-      const key = segment.slice(4, segment.length - 1); // 4 = length of '[...';
+      const spreadKey = segment.slice(1, segment.length - 1).trim();
+      const key = spreadKey.slice(3);
       if (key in replace && !!replace[key]) {
         const value = replace[key];
         if (Array.isArray(value)) {
@@ -124,7 +131,8 @@ const replaceCatchAllSegment = (path: string, replace: Record<string, unknown>, 
             }
             generatedPath = removeOptionalSegment(segment, generatedPath);
           } else {
-            generatedPath = generatedPath.replace(isOptional ? `[${segment}]` : segment, filteredValue.join('/'));
+            const encodedValue = filteredValue.map(encodeURIComponent).join('/');
+            generatedPath = generatedPath.replace(isOptional ? `[${segment}]` : segment, encodedValue);
           }
         } else {
           throw new TypeError(`Invalid value type of ${key} for path: ${originalPath}`);
@@ -142,8 +150,17 @@ const replaceCatchAllSegment = (path: string, replace: Record<string, unknown>, 
   return generatedPath;
 };
 
+const trimKeyOfObj = <T extends Record<string, unknown>>(obj: T): T => {
+  const newObj = {} as Record<string, unknown>;
+  for (const [key, value] of Object.entries(obj)) {
+    newObj[key] = value;
+  }
+  return newObj as T;
+};
+
 export const generatePath = <Path extends string>(path: Path, replace: ReplacePath<Path>): string => {
   let generatedPath: string = path;
+  replace = trimKeyOfObj(replace);
   generatedPath = replaceSingleSegment(generatedPath, replace, path);
   generatedPath = replaceCatchAllSegment(generatedPath, replace, path);
 

@@ -91,4 +91,17 @@ it('Replaces single segment from URL', () => {
   expect(generatePath(PATHS.sixteen, {})).toBe('posts/');
 
   expect(generatePath(PATHS.seventeen, { category })).toBe(`${category}/posts/${category}`);
+
+  expect(generatePath('[   slug]', { slug })).toBe(slug);
+  expect(generatePath('[[  ...slug]]', {})).toBe('');
+  expect(generatePath('[  ...slugs]', { slugs })).toBe(slugs.join('/'));
+  expect(generatePath('[[   slug]]', { slug })).toBe(slug);
+  expect(generatePath('[slug    ]', { slug })).toBe(slug);
+  expect(generatePath('[[  ...slug   ]]', {})).toBe('');
+  expect(generatePath('[  ...slugs   ]', { slugs })).toBe(slugs.join('/'));
+  expect(generatePath('[[   slug   ]]', { slug })).toBe(slug);
+  expect(generatePath('[email]', { email: 'example@mail.com' })).toBe(encodeURIComponent('example@mail.com'));
+  expect(generatePath('[...emails]', { emails: ['example@mail.com', 'example2@mail.com'] })).toBe(
+    ['example@mail.com', 'example2@mail.com'].map(encodeURIComponent).join('/')
+  );
 });
